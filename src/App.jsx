@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 
 // ══════════════════════════════════════════════════════════════
+// API KEY - پہلے سے لگی ہوئی ہے
+// ══════════════════════════════════════════════════════════════
+const ANTHROPIC_API_KEY = "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";
+
+// ══════════════════════════════════════════════════════════════
 // TRANSLATIONS — 7 Languages
 // ══════════════════════════════════════════════════════════════
 const T = {
@@ -120,9 +125,7 @@ const T = {
     hero_tag:"درع المستقل",hero_h1a:"احمِ عملك.",hero_h1b:"أثبت قيمتك.",
     hero_p:"أداتان ذكيتان للمستقلين — أوقف توسع النطاق قبل أن يكلفك، وأظهر للعملاء قيمتك الحقيقية بثقة.",
     hero_cta1:"جرّب إثبات القيمة",hero_cta2:"جرّب حارس الحدود",
-    s1n:"73%",s1l:"من المستقلين يواجهون توسع النطاق في كل مشروع",
-    s2n:"12K$",s2l:"خسارة سنوية لكل مستقل بسبب العمل غير المدفوع",
-    s3n:"68%",s3l:"من العملاء يدفعون أقل لأنهم لا يرون القيمة كاملة",
+    s1n:"73%",s1l:"من المستقلين يواجهون توسع النطاق في كل مشروع",s2n:"12K$",s2l:"خسارة سنوية لكل مستقل بسبب العمل غير المدفوع",s3n:"68%",s3l:"من العملاء يدفعون أقل لأنهم لا يرون القيمة كاملة",
     fvt:"إثبات القيمة",fvi:"💎",fvd:"حوّل عملك المنجز إلى قصة قيمة مقنعة. أظهر للعملاء التأثير التجاري الدقيق الذي أحدثته.",fvb:"فتح إثبات القيمة →",
     fbt:"حارس الحدود",fbi:"🛡️",fbd:"الصق عقدك وطلب العميل الجديد. احصل على حكم فوري بشأن توسع النطاق مع رد جاهز للإرسال.",fbb:"فتح حارس الحدود →",
     hiw:"مبني لمشاكل المستقلين الحقيقية",
@@ -700,9 +703,13 @@ function ValueProofPage({ t, th, lang }) {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        headers:{ 
+          "Content-Type":"application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01"
+        },
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
+          model:"claude-3-5-sonnet-20241022",
           max_tokens:1000,
           messages:[{ role:"user", content:`You are a world-class marketing consultant specializing in helping freelancers articulate their value.
 
@@ -726,8 +733,14 @@ Keep it compelling, professional, and results-focused. Respond entirely in ${LAN
         })
       });
       const data = await res.json();
-      setResult((data.content||[]).map(b=>b.text||"").join(""));
-    } catch { setResult(t.err_t); }
+      if (data.error) {
+        setResult(`Error: ${data.error.message || "API error"}`);
+      } else {
+        setResult((data.content||[]).map(b=>b.text||"").join(""));
+      }
+    } catch (e) {
+      setResult(t.err_t);
+    }
     setLoading(false);
   };
 
@@ -905,9 +918,13 @@ function BoundaryGuardPage({ t, th, lang }) {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        headers:{ 
+          "Content-Type":"application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01"
+        },
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
+          model:"claude-3-5-sonnet-20241022",
           max_tokens:900,
           messages:[{ role:"user", content:`You are BoundaryGuard, an expert in freelance contract scope analysis.
 
@@ -927,9 +944,15 @@ Respond ONLY with valid JSON (no markdown, no backticks, no extra text):
         })
       });
       const data = await res.json();
-      const txt = (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
-      setResult(JSON.parse(txt));
-    } catch { setResult({ verdict:"ERROR", explanation:t.err_t, suggested_response:"", action:"" }); }
+      if (data.error) {
+        setResult({ verdict:"ERROR", explanation:`Error: ${data.error.message}`, suggested_response:"", action:"" });
+      } else {
+        const txt = (data.content||[]).map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+        setResult(JSON.parse(txt));
+      }
+    } catch {
+      setResult({ verdict:"ERROR", explanation:t.err_t, suggested_response:"", action:"" });
+    }
     setLoading(false);
   };
 
@@ -1201,7 +1224,7 @@ export default function App() {
           t={t} th={th}
         />
 
-        <main onClick={() => {}}>
+        <main>
           {page === "home" && <HomePage setPage={setPage} t={t} th={th} />}
           {page === "valueproof" && <ValueProofPage t={t} th={th} lang={lang} key={lang} />}
           {page === "boundaryguard" && <BoundaryGuardPage t={t} th={th} lang={lang} key={lang} />}
